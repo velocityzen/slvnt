@@ -1,10 +1,12 @@
 name: Release
 
 # Manually-triggered release. Given a semver `version`, it stamps that version
-# into the CLI (Sources/cli/Slvnt.swift) and commits it, builds and tests, tags
-# that commit, and publishes a GitHub release. If `release.md` has content it's
-# used as the release notes and then emptied (committed back); otherwise notes
-# are auto-generated from commits.
+# into the CLI (Sources/cli/Slvnt.swift) and commits it, builds and tests, builds
+# an optimized, symbol-stripped arm64 release binary, tags that commit, and
+# publishes a GitHub release with the zipped binary attached. If `release.md`
+# has content it's used as the
+# release notes and then emptied (committed back); otherwise notes are
+# auto-generated from commits.
 
 on:
   workflow_dispatch:
@@ -25,7 +27,7 @@ concurrency:
 jobs:
   release:
     name: Tag & release ${{ inputs.version }}
-    runs-on: macos-26
+    runs-on: macos-15
     permissions:
       contents: write # create the tag/release and commit the emptied release.md
     steps:
@@ -34,8 +36,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.2.0.app/Contents/Developer
+      - name: Set up Swift 6.3
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.3"
 
       - name: Validate version
         env:
@@ -69,19 +73,33 @@ jobs:
           swift build
           swift test
 
+      - name: Build release binary
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Optimized release build, Apple Silicon only, dead-stripped and with
+          # the symbol table stripped. (We don't strip Swift reflection metadata —
+          # ArgumentParser discovers options via Mirror.)
+          swift build -c release --arch arm64 -Xlinker -dead_strip
+          BIN="$(swift build -c release --arch arm64 --show-bin-path)/slvnt"
+          strip "$BIN"
+          ASSET="slvnt-$VERSION-macos-arm64.zip"
+          zip -j "$ASSET" "$BIN"
+          echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
-          # Tag the commit that carries the stamped version.
+          # Tag the commit that carries the stamped version; attach the binary zip.
           SHA="$(git rev-parse HEAD)"
           if [ -s release.md ]; then
             echo "Publishing with notes from release.md"
-            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --notes-file release.md
+            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --notes-file release.md "$ASSET"
           else
             echo "No release.md content; auto-generating notes"
-            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --generate-notes
+            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --generate-notes "$ASSET"
           fi
 
       - name: Empty release notes

@@ -102,9 +102,9 @@ The connection lifecycle for uploads is owned by a `BracketAsync` (connect → t
 
 ## CI & releasing
 
-GitHub Actions run **lint** (`swift format lint --strict`) and **build & test** on every push to `main` and on pull requests (macOS, Swift 6.3 via Xcode 26).
+GitHub Actions run **lint** (`swift format lint --strict`) and **build & test** on every push to `main` and on pull requests (macOS runner, Swift 6.3 installed via `swift-actions/setup-swift`).
 
-Releasing is manual: trigger the **Release** workflow (Actions → Release → Run workflow) with a semver `version` (e.g. `0.1.0`). It validates the version, stamps it into the CLI (`Sources/cli/Slvnt.swift`'s `version:`) and commits that, builds and tests, tags the commit, and publishes a GitHub release. Write the release body into `release.md` first — it becomes the release notes and is then emptied (committed back); with no `release.md` content, notes are auto-generated from commit history.
+Releasing is manual: trigger the **Release** workflow (Actions → Release → Run workflow) with a semver `version` (e.g. `0.1.0`). It validates the version, stamps it into the CLI (`Sources/cli/Slvnt.swift`'s `version:`) and commits that, builds and tests, builds an optimized, symbol-stripped Apple Silicon (`arm64`) release binary, tags the commit, and publishes a GitHub release with the zipped binary attached (`slvnt-<version>-macos-arm64.zip`). Write the release body into `release.md` first — it becomes the release notes and is then emptied (committed back); with no `release.md` content, notes are auto-generated from commit history.
 
 ## Security
 
