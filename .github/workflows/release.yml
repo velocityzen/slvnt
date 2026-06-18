@@ -1,0 +1,100 @@
+name: Release
+
+# Manually-triggered release. Given a semver `version`, it stamps that version
+# into the CLI (Sources/cli/Slvnt.swift) and commits it, builds and tests, tags
+# that commit, and publishes a GitHub release. If `release.md` has content it's
+# used as the release notes and then emptied (committed back); otherwise notes
+# are auto-generated from commits.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (semver, e.g. 0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Never run two releases at once, and never cancel one mid-flight.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag & release ${{ inputs.version }}
+    runs-on: macos-26
+    permissions:
+      contents: write # create the tag/release and commit the emptied release.md
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.0.app/Contents/Developer
+
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$VERSION' is not semver (major.minor.patch, e.g. 0.1.0)"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::error::tag '$VERSION' already exists"
+            exit 1
+          fi
+
+      - name: Stamp & commit version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Write the version into the CLI and commit it before building.
+          sed -i '' -E "s/version: \"[^\"]*\"/version: \"$VERSION\"/" Sources/cli/Slvnt.swift
+          grep -nE 'version: "' Sources/cli/Slvnt.swift
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Sources/cli/Slvnt.swift
+          git diff --staged --quiet || git commit -m "Release $VERSION"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Build & test
+        run: |
+          swift build
+          swift test
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Tag the commit that carries the stamped version.
+          SHA="$(git rev-parse HEAD)"
+          if [ -s release.md ]; then
+            echo "Publishing with notes from release.md"
+            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --notes-file release.md
+          else
+            echo "No release.md content; auto-generating notes"
+            gh release create "$VERSION" --target "$SHA" --title "$VERSION" --generate-notes
+          fi
+
+      - name: Empty release notes
+        if: ${{ success() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Only when release.md actually carried notes — reset it for next time.
+          [ -s release.md ] || exit 0
+          : > release.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add release.md
+          git commit -m "chore: clear release notes after $VERSION"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"

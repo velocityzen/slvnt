@@ -100,6 +100,12 @@ The connection lifecycle for uploads is owned by a `BracketAsync` (connect → t
 - **ZIP upload** (extract-then-send) is not implemented; upload a folder or files instead.
 - **`--host` expects a numeric IP** for uploads (the FTP client connects to a literal address).
 
+## CI & releasing
+
+GitHub Actions run **lint** (`swift format lint --strict`) and **build & test** on every push to `main` and on pull requests (macOS, Swift 6.3 via Xcode 26).
+
+Releasing is manual: trigger the **Release** workflow (Actions → Release → Run workflow) with a semver `version` (e.g. `0.1.0`). It validates the version, stamps it into the CLI (`Sources/cli/Slvnt.swift`'s `version:`) and commits that, builds and tests, tags the commit, and publishes a GitHub release. Write the release body into `release.md` first — it becomes the release notes and is then emptied (committed back); with no `release.md` content, notes are auto-generated from commit history.
+
 ## Security
 
 The player's only credential is a 4-digit transfer code, reused as the HTTP `X-Sleevenote-Code` header and the FTP password. FTP is plaintext and HTTPS certificate validation is disabled (the device ships a self-signed cert), matching the official Manager. The saved session — including the code — is written in plaintext to `~/.config/slvnt/session.json`. All traffic is LAN-scoped.
