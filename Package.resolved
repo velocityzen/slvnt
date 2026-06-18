@@ -1,0 +1,42 @@
+{
+  "originHash" : "0de530f87a90450aba52f190c6eb5b0e3f552508b62638de335d08d39c22e580",
+  "pins" : [
+    {
+      "identity" : "fp-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/velocityzen/fp-swift",
+      "state" : {
+        "revision" : "34fa04eb2b41f8c5e0b63cd19fe79262958edebc",
+        "version" : "3.3.0"
+      }
+    },
+    {
+      "identity" : "fp-swift-bracket",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/velocityzen/fp-swift-bracket",
+      "state" : {
+        "branch" : "main",
+        "revision" : "e432d4a38f9db375c17d14e94855886592296d82"
+      }
+    },
+    {
+      "identity" : "fp-swift-pipe",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/velocityzen/fp-swift-pipe",
+      "state" : {
+        "branch" : "main",
+        "revision" : "5ed3bb78440d28d7d79854d8442387fc3a26d54c"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
+      }
+    }
+  ],
+  "version" : 3
+}
