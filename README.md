@@ -47,6 +47,15 @@ slvnt disconnect
 
 Any command accepts `--host`, `--http-port`, `--ftp-port`, `--https`, `--code`, and `--config` to bypass the saved session for a one-off call.
 
+## Agent skill
+
+[`SKILL.md`](SKILL.md) teaches an agent (e.g. Claude Code) how to drive this CLI — the commands, the on-device pairing-code constraint, output/exit codes, and upload behavior. Symlink it into your skills directory to make it auto-discoverable:
+
+```sh
+mkdir -p ~/.agents/skills/slvnt
+ln -s "$PWD/SKILL.md" ~/.agents/skills/slvnt/SKILL.md
+```
+
 ## Library
 
 The `Slvnt` library is usable on its own. Each service takes its transport as an injectable seam (defaulting to the real implementation):
